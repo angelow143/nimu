@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
-
-const filePath = path.join(process.cwd(), "data", "portfolio.json");
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf8");
-      return NextResponse.json(JSON.parse(data));
+    const { data, error } = await supabase.from('portfolio').select('*').single();
+    
+    if (data) {
+      return NextResponse.json(data);
     }
+    
+    // Default initial portfolio if table is empty
     return NextResponse.json({
       name: "Nimu",
       introTitle: "Hi there, I'm Nimu!",
@@ -31,7 +31,18 @@ export async function POST(req) {
 
   try {
     const content = await req.json();
-    fs.writeFileSync(filePath, JSON.stringify(content, null, 2));
+    
+    // Check if a row exists
+    const { data: existing } = await supabase.from('portfolio').select('id').single();
+    
+    if (existing) {
+      // Update
+      await supabase.from('portfolio').update(content).eq('id', existing.id);
+    } else {
+      // Insert
+      await supabase.from('portfolio').insert([content]);
+    }
+    
     return NextResponse.json({ message: "Portfolio updated" });
   } catch (e) {
     return NextResponse.json({ error: "Error saving portfolio" }, { status: 500 });

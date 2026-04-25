@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
-
-const filePath = path.join(process.cwd(), "data", "projects.json");
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf8");
-      return NextResponse.json(JSON.parse(data));
-    }
-    // Default initial projects
-    return NextResponse.json([]);
+    const { data: projects, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('date', { ascending: false });
+      
+    if (error) throw error;
+    return NextResponse.json(projects || []);
   } catch (e) {
     return NextResponse.json({ error: "Error reading projects" }, { status: 500 });
   }
@@ -27,9 +25,18 @@ export async function POST(req) {
 
   try {
     const projects = await req.json();
-    fs.writeFileSync(filePath, JSON.stringify(projects, null, 2));
+    
+    // Simplest way to handle an array replacement is to delete all and insert new ones
+    // A better way would be an upsert, but since this replaces the whole array in the UI:
+    await supabase.from('projects').delete().neq('id', '0'); // delete all
+    
+    if (projects && projects.length > 0) {
+      await supabase.from('projects').insert(projects);
+    }
+    
     return NextResponse.json({ message: "Projects updated" });
   } catch (e) {
+    console.error(e);
     return NextResponse.json({ error: "Error saving projects" }, { status: 500 });
   }
 }
