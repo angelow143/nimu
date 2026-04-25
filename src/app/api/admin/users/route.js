@@ -1,20 +1,7 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/auth";
-
-const usersFilePath = path.join(process.cwd(), "data", "users.json");
-
-function getUsers() {
-  if (!fs.existsSync(usersFilePath)) return [];
-  const data = fs.readFileSync(usersFilePath, "utf8");
-  return JSON.parse(data);
-}
-
-function saveUsers(users) {
-  fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
-}
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,9 +10,11 @@ export async function GET() {
   }
 
   try {
-    const users = getUsers();
+    const { data: users, error } = await supabase.from('users').select('*');
+    if (error) throw error;
     return NextResponse.json(users);
   } catch (err) {
+    console.error(err);
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 }
@@ -38,26 +27,26 @@ export async function POST(req) {
 
   try {
     const { name, email, password, role } = await req.json();
-    const users = getUsers();
     
     // Check if email already exists
-    if (users.find(u => u.email === email)) {
+    const { data: existingUser } = await supabase.from('users').select('email').eq('email', email).single();
+    if (existingUser) {
       return NextResponse.json({ error: "Email/Username already exists" }, { status: 400 });
     }
 
     const newUser = {
-      id: Date.now().toString(),
       name,
       email,
       password,
       role: role || "user"
     };
 
-    users.push(newUser);
-    saveUsers(users);
+    const { data: insertedUser, error } = await supabase.from('users').insert([newUser]).select().single();
+    if (error) throw error;
 
-    return NextResponse.json({ message: "User added successfully", user: newUser });
+    return NextResponse.json({ message: "User added successfully", user: insertedUser });
   } catch (err) {
+    console.error(err);
     return NextResponse.json({ error: "Failed to add user" }, { status: 500 });
   }
 }
@@ -70,22 +59,18 @@ export async function PUT(req) {
 
   try {
     const { userId, name, email, password } = await req.json();
-    const users = getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
+    
+    const updates = {};
+    if (name) updates.name = name;
+    if (email) updates.email = email;
+    if (password) updates.password = password;
 
-    if (userIndex === -1) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Update fields if provided
-    if (name) users[userIndex].name = name;
-    if (email) users[userIndex].email = email;
-    if (password) users[userIndex].password = password;
-
-    saveUsers(users);
+    const { error } = await supabase.from('users').update(updates).eq('id', userId);
+    if (error) throw error;
 
     return NextResponse.json({ message: "User updated successfully" });
   } catch (err) {
+    console.error(err);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
@@ -98,18 +83,18 @@ export async function DELETE(req) {
 
   try {
     const { userId } = await req.json();
-    let users = getUsers();
     
-    // Prevent deleting self or super admin if necessary
-    if (userId === "admin" || userId === session.user.id) {
+    // Prevent deleting self
+    if (userId === session.user.id) {
       return NextResponse.json({ error: "Cannot delete this user" }, { status: 400 });
     }
 
-    users = users.filter(u => u.id !== userId);
-    saveUsers(users);
+    const { error } = await supabase.from('users').delete().eq('id', userId);
+    if (error) throw error;
 
     return NextResponse.json({ message: "User deleted successfully" });
   } catch (err) {
+    console.error(err);
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }
