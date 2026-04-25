@@ -1,0 +1,38 @@
+[
+  {
+    "id": "admin",
+    "name": "SUPER ADMIN",
+    "email": "admin@example.com",
+    "password": "admin",
+    "role": "admin"
+  },
+  {
+    "id": "useradmin",
+    "name": "USERADMIN",
+    "email": "useradmin",
+    "password": "useradmin",
+    "role": "useradmin"
+  },
+  {
+    "id": "1777118488017",
+    "name": "user2",
+    "email": "user@gmail.com",
+    "password": "user2",
+    "role": "user"
+  },
+  {
+    "id": "1777118810448",
+    "name": "user4",
+    "email": "user4",
+    "password": "user4",
+    "role": "user"
+  },
+  {
+    "id": "1777119348498",
+    "name": "angelow",
+    "email": "angelowlarot@gmail.com",
+    "password": "1234",
+    "role": "user",
+    "image": "/uploads/profiles/angelowlarot_gmail_com.png"
+  }
+]
