@@ -240,7 +240,7 @@ export default function Home() {
       const newProject = {
         id: Date.now().toString(),
         title: "New Album",
-        subtitle: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        subtitle: new Date().toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
         images: base64Images,
         date: new Date().toISOString()
       };
@@ -590,7 +590,7 @@ export default function Home() {
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-bold text-sm text-purple-600 dark:text-purple-400">{comment.user_name || "Unknown User"}</span>
-                        <span className="text-[10px] text-zinc-400">{new Date(comment.date).toLocaleDateString()}</span>
+                        <span className="text-[10px] text-zinc-400">{new Date(comment.date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                       </div>
                       <p className="text-sm bg-white dark:bg-zinc-800 p-3 rounded-xl rounded-tl-none shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">{comment.text}</p>
                     </div>
