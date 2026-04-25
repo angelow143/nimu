@@ -36,6 +36,7 @@ export async function POST(req) {
       project_id: projectId,
       user_name: session.user.name,
       user_email: session.user.email,
+      user_image: session.user.image || null,
       text,
       date: new Date().toISOString(),
     };

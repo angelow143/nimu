@@ -579,12 +579,21 @@ export default function Home() {
                 </div>
               ) : (
                 comments.map((comment) => (
-                  <div key={comment.id} className="group">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold text-sm text-purple-600 dark:text-purple-400">{comment.userName}</span>
-                      <span className="text-[10px] text-zinc-400">{new Date(comment.date).toLocaleDateString()}</span>
+                  <div key={comment.id} className="group flex gap-3">
+                    <div className="size-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 font-bold text-[10px] uppercase shrink-0 shadow-sm border border-zinc-300 dark:border-zinc-700 overflow-hidden">
+                      {comment.user_image ? (
+                        <img src={comment.user_image} className="size-full object-cover" />
+                      ) : (
+                        comment.user_name ? comment.user_name.charAt(0) : "?"
+                      )}
                     </div>
-                    <p className="text-sm bg-white dark:bg-zinc-800 p-3 rounded-xl rounded-tl-none shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">{comment.text}</p>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-sm text-purple-600 dark:text-purple-400">{comment.user_name || "Unknown User"}</span>
+                        <span className="text-[10px] text-zinc-400">{new Date(comment.date).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-sm bg-white dark:bg-zinc-800 p-3 rounded-xl rounded-tl-none shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">{comment.text}</p>
+                    </div>
                   </div>
                 ))
               )}
