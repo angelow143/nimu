@@ -1,8 +1,5 @@
 import CredentialsProvider from "next-auth/providers/credentials";
-import fs from "fs";
-import path from "path";
-
-const usersFilePath = path.join(process.cwd(), "data", "users.json");
+import { supabase } from "./supabase";
 
 export const authOptions = {
   providers: [
@@ -14,21 +11,25 @@ export const authOptions = {
       },
       async authorize(credentials) {
         try {
-          if (fs.existsSync(usersFilePath)) {
-            const data = fs.readFileSync(usersFilePath, "utf8");
-            const users = JSON.parse(data);
-            const user = users.find(u => u.email === credentials.username && u.password === credentials.password);
-            if (user) {
-              return { 
-                id: user.id, 
-                name: user.name, 
-                email: user.email, 
-                role: user.role || "user", 
-                image: user.image || null 
-              };
-            }
+          const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', credentials.username)
+            .eq('password', credentials.password)
+            .single();
+
+          if (user) {
+            return { 
+              id: user.id, 
+              name: user.name, 
+              email: user.email, 
+              role: user.role || "user", 
+              image: user.image || null 
+            };
           }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+          console.error(e); 
+        }
         return null;
       },
     }),
@@ -36,6 +37,7 @@ export const authOptions = {
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
+        token.id = user.id;
         token.role = user.role;
         token.image = user.image;
       }
@@ -46,6 +48,7 @@ export const authOptions = {
     },
     async session({ session, token }) {
       if (session?.user) {
+        session.user.id = token.id;
         session.user.role = token.role;
         session.user.image = token.image;
       }

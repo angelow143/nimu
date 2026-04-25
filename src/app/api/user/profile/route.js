@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/auth";
-
-const usersFilePath = path.join(process.cwd(), "data", "users.json");
-const uploadDir = path.join(process.cwd(), "public", "uploads", "profiles");
+import { supabase } from "@/lib/supabase";
 
 export async function POST(req) {
   const session = await getServerSession(authOptions);
@@ -15,35 +11,18 @@ export async function POST(req) {
     const { image } = await req.json(); // base64 string
     if (!image) return NextResponse.json({ error: "No image provided" }, { status: 400 });
 
-    // 1. Ensure upload directory exists
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    // Update the user's image directly in Supabase using the base64 string
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ image: image })
+      .eq('email', session.user.email);
 
-    // 2. Prepare the file name (use user ID or email as unique identifier)
-    const userId = session.user.id || session.user.email.replace(/[@.]/g, "_");
-    const fileName = `${userId}.png`;
-    const filePath = path.join(uploadDir, fileName);
-    const publicUrl = `/uploads/profiles/${fileName}`;
-
-    // 3. Save the base64 as file
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-    fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-
-    // 4. Update the current user's image URL in users.json
-    if (fs.existsSync(usersFilePath)) {
-      const data = fs.readFileSync(usersFilePath, "utf8");
-      let users = JSON.parse(data);
-
-      const userIndex = users.findIndex(u => u.email === session.user.email);
-      if (userIndex !== -1) {
-        users[userIndex].image = publicUrl;
-        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
-        return NextResponse.json({ message: "Profile updated", image: publicUrl });
-      }
+    if (updateError) {
+      console.error("Supabase update error:", updateError);
+      return NextResponse.json({ error: "Failed to update profile image" }, { status: 500 });
     }
     
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return NextResponse.json({ message: "Profile updated", image: image });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Error saving profile" }, { status: 500 });

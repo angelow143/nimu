@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-const usersFilePath = path.join(process.cwd(), "data", "users.json");
+import { supabase } from "@/lib/supabase"; // Import Supabase client
 
 export async function POST(req) {
   try {
@@ -12,35 +9,28 @@ export async function POST(req) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Ensure data directory exists
-    const dataDir = path.dirname(usersFilePath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    // Read existing users
-    let users = [];
-    if (fs.existsSync(usersFilePath)) {
-      try {
-        const data = fs.readFileSync(usersFilePath, "utf8");
-        users = JSON.parse(data || "[]");
-      } catch (e) {
-        console.error("Error parsing users.json, resetting to empty array");
-        users = [];
-      }
-    }
-
     // Check if user already exists
-    if (users.find((u) => u.email === email)) {
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email)
+      .single();
+
+    if (existingUser) {
       return NextResponse.json({ error: "User already exists" }, { status: 400 });
     }
 
-    // Add new user (In a real app, hash the password!)
-    const newUser = { id: Date.now().toString(), name, email, password };
-    users.push(newUser);
+    // Insert new user
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert([
+        { name, email, password }
+      ]);
 
-    // Save back to file
-    fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+    if (insertError) {
+      console.error("Supabase insert error:", insertError);
+      return NextResponse.json({ error: "Failed to register user" }, { status: 500 });
+    }
 
     return NextResponse.json({ message: "User registered successfully" });
   } catch (error) {
