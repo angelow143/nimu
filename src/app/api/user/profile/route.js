@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../../lib/auth";
+import { authOptions } from "../../../../lib/auth";
 
 const usersFilePath = path.join(process.cwd(), "data", "users.json");
 const uploadDir = path.join(process.cwd(), "public", "uploads", "profiles");
