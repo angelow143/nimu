@@ -11,20 +11,51 @@ export async function POST(req) {
     const { image } = await req.json(); // base64 string
     if (!image) return NextResponse.json({ error: "No image provided" }, { status: 400 });
 
-    // Update the user's image directly in Supabase using the base64 string
+    // 1. Convert base64 to buffer
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    // 2. Determine file extension and create unique filename
+    const mimeType = image.split(';')[0].split(':')[1];
+    const ext = mimeType.split('/')[1] || 'png';
+    const fileName = `${session.user.id}-${Date.now()}.${ext}`;
+
+    // 3. Upload to Supabase Storage (bucket name: 'profiles')
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('profiles')
+      .upload(fileName, buffer, {
+        contentType: mimeType,
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      return NextResponse.json({ error: "Failed to upload image to storage" }, { status: 500 });
+    }
+
+    // 4. Get the public URL of the uploaded image
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('profiles')
+      .getPublicUrl(fileName);
+
+    const publicUrl = publicUrlData.publicUrl;
+
+    // 5. Update the user's record in the database with the new short URL
     const { error: updateError } = await supabase
       .from('users')
-      .update({ image: image })
-      .eq('email', session.user.email);
+      .update({ image: publicUrl })
+      .eq('id', session.user.id);
 
     if (updateError) {
-      console.error("Supabase update error:", updateError);
-      return NextResponse.json({ error: "Failed to update profile image" }, { status: 500 });
+      console.error("Database update error:", updateError);
+      return NextResponse.json({ error: "Failed to update user profile" }, { status: 500 });
     }
     
-    return NextResponse.json({ message: "Profile updated", image: image });
+    return NextResponse.json({ message: "Profile updated", image: publicUrl });
   } catch (e) {
-    console.error(e);
+    console.error("Profile upload catch error:", e);
     return NextResponse.json({ error: "Error saving profile" }, { status: 500 });
   }
 }
